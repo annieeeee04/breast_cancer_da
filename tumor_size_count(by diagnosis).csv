@@ -1,0 +1,6 @@
+tumor_size_category,diagnosis,count
+Large,M,92
+Small,M,10
+Medium,M,110
+Medium,B,137
+Small,B,220

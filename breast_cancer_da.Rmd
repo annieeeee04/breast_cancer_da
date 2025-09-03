@@ -1,0 +1,143 @@
+---
+title: "breast_cancer_da"
+output:
+  pdf_document: default
+  html_document: default
+date: "2025-08-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr) 
+library(corrplot)
+library(ggplot2)
+```
+## Read data
+```{r}
+data <- read.csv("~/Desktop/breast_cancer_da/Breast_cancer_dataset.csv")
+```
+
+
+## Manual Correlations
+Get the correaltions between diagnosis and the relevant values of radius of tumor
+```{r}
+data_summary <- data |>
+  group_by(diagnosis) |>
+  summarise(
+    max_radius = max(radius_mean, na.rm = TRUE),
+    min_radius = min(radius_mean, na.rm = TRUE),
+    avg_radius = mean(radius_mean, na.rm = TRUE)
+  )
+
+print(data_summary)
+```
+
+## Correlation beween raidus_mean and area_mean
+```{r}
+cor(data$radius_mean, data$area_mean, use = "complete.obs", method = "pearson")
+```
+
+## Full Correlation Matrix for All Numeric Variables
+```{r}
+numeric_data <- data %>% 
+  select(where(is.numeric))
+
+cor_matrix <- 
+  cor(numeric_data, use = "complete.obs", method = "pearson")
+print(head(round(cor_matrix, 2)))
+```
+
+## Visualization of correlations
+```{r}
+corrplot(cor_matrix, method = "color", type = "upper", tl.cex = 0.7)
+```
+
+## Correlation by Diagnosis Group
+```{r}
+malignant <- data |>
+  filter(diagnosis == "M") |>
+  select(where(is.numeric))
+
+benign <- data |>
+  filter(diagnosis == "B") |>
+  select(where(is.numeric))
+
+cor_m <- round(cor(malignant, use = "complete.obs"), 2)
+cor_b <- round(cor(benign, use = "complete.obs"), 2)
+```
+
+```{r, fig.width=6, fig.height=6}
+
+corrplot(
+  cor_m,
+  method = "color",
+  type = "upper",
+  order = "hclust",
+  tl.cex = 0.7,
+  tl.col = "black",
+  tl.srt = 45
+)
+
+title("Malignant Tumors", outer = TRUE, line = -1, cex.main = 1.5)
+```
+
+## Correlations with radius_mean(Malgnant)
+```{r}
+malignant_numeric <- malignant |>
+  select(where(is.numeric)) |>
+  select(- id)
+
+cor_vec <- sapply(malignant_numeric, 
+                  function(x) cor(x, 
+                                  malignant_numeric$radius_mean, 
+                                  use = "complete.obs"))
+cor_vec <- cor_vec[names(cor_vec) != "radius_mean"]
+cor_df <- data.frame(
+  variable = names(cor_vec),
+  correlation = cor_vec
+)
+cor_df
+top_cor <- cor_df %>% 
+  arrange(desc(abs(correlation)))
+
+ggplot(top_cor, aes(x = reorder(variable, correlation), y = correlation)) +
+  geom_col(fill = "darkorange") +
+  coord_flip() +
+  labs(title = "Correlation with radius_mean (Malignant)", 
+       x = "Variable", y = "Correlation")
+```
+
+## Correlation between diagnosis and tumor size
+```{r}
+data$diagnosis_num <- ifelse(data$diagnosis == "M", 1, 0)
+
+cor(data$diagnosis_num, 
+    data$radius_mean, 
+    use = "complete.obs", method = "pearson")
+```
+
+### Compare Means(t-test)
+```{r}
+t.test(radius_mean ~ diagnosis, data = data)
+```
+The p-value of such one-sided t-test is small enough. Thus, we are 95% confident to 
+conclude that the tumor size matters in diagnosis of breast cancor. 
+Also, we can see that the all value inside the 95% confidence interval is negative,
+which intensifies the conclusion we made before that tumor size is an important 
+factor in diagnosis the breast cancer. 
+
+
+```{r}
+ggplot(data, aes(x = diagnosis, y = radius_mean, fill = diagnosis)) +
+  geom_boxplot() +
+  labs(title = "Radius Mean by Diagnosis", y = "Radius Mean", x = "Diagnosis")
+```
+From the plot above, we can easily see the differece of mean tumor size between 
+maglinant group and benign group. 
+
+
+
+
+
+
+
